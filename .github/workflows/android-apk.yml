@@ -4,13 +4,15 @@ name: Build Whatsup APK
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Java
@@ -30,17 +32,31 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
-      - name: Extract project
+      - name: Extract Android project
         run: |
           mkdir project
-          unzip whatsup-github-apk-build.zip -d project
+          unzip -o whatsup-github-apk-build.zip -d project
 
-      - name: Build APK
-        run: gradle -p project --no-daemon assembleDebug
+      - name: Generate Debug Keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore project/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build Whatsup APK
+        run: |
+          gradle -p project --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Whatsup-APK
           path: project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           
